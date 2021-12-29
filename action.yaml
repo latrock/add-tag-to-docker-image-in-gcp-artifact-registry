@@ -1,0 +1,34 @@
+name: Add tag to Docker image in GCP Artifact Registry
+description: Add tag GITHUB_REF_NAME to an existing Docker image found by GITHUB_SHA in the specified GCP Artifact Registry
+inputs:
+  gcp-sa-creds-json:
+    description: The Google Cloud JSON service account key to use for authentication
+    required: true
+  registry:
+    description: GCP Artifact Registry
+    required: true
+    default: europe-west3-docker.pkg.dev
+  repository:
+    description: Image repository
+    required: true
+  image-name:
+    description: Image name
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Setup GCP SDK and Docker Client
+      uses: latrock/gcp-artifact-registry-auth@v0.1.2
+      with:
+        gcp-sa-creds-json: ${{ inputs.gcp-sa-creds-json }}
+        registry: ${{ inputs.registry }}
+    - name: Checkout
+      uses: actions/checkout@v2
+    - name: Pull Docker Image
+      shell: bash
+      run: docker pull ${{ inputs.registry }}/$GCP_PROJECT/${{ inputs.repository }}/${{ inputs.image-name }}:$GITHUB_SHA
+    - name: Push Docker Image to Artifact Registry
+      shell: bash
+      run: |-
+        docker tag ${{ inputs.registry }}/$GCP_PROJECT/${{ inputs.repository }}/${{ inputs.image-name }}:$GITHUB_SHA ${{ inputs.registry }}/$GCP_PROJECT/${{ inputs.repository }}/${{ inputs.image-name }}:$GITHUB_REF_NAME
+        docker push ${{ inputs.registry }}/$GCP_PROJECT/${{ inputs.repository }}/${{ inputs.image-name }}:$GITHUB_REF_NAME
